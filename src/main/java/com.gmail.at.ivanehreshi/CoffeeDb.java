@@ -5,15 +5,15 @@ import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import java.sql.*;
 import java.util.Optional;
 
-public class Db {
+public class CoffeeDb {
     MysqlDataSource ds;
-    String dbName = "sample_schema";
+    String dbName = "coffee_shop";
     String user = "ivaneh";
     String password = "password";
     Connection connection = null;
-    final String SQL_DOMAIN = "SELECT magic_column FROM sample_table__";
+    static final String SQL_DOMAIN = "SELECT magic_column FROM coffee";
 
-    public Db() {
+    public CoffeeDb() {
         this.ds = new MysqlDataSource();
         ds.setDatabaseName(dbName);
         ds.setUser(user);
@@ -61,7 +61,10 @@ public class Db {
         else
             return;
 
+
         try(Statement statement = connection.createStatement()) {
+            DatabaseMetaData metaData = connection.getMetaData();
+
             ResultSet rs = statement.executeQuery(SQL_DOMAIN);
             while (rs.next()) {
                 System.out.println(rs.getString("magic_column"));
@@ -106,7 +109,7 @@ public class Db {
     }
 
     public static void main(String[] args) {
-        Db db = new Db();
+        CoffeeDb db = new CoffeeDb();
         db.connect();
         db.domainMethod();
         db.close();

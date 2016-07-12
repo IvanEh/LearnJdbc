@@ -2,16 +2,14 @@ package com.gmail.at.ivanehreshi;
 
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 
-import javax.rmi.CORBA.Util;
-import javax.sql.ConnectionPoolDataSource;
-import javax.sql.DataSource;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Optional;
-import java.util.concurrent.Exchanger;
 
 public class Db {
     MysqlDataSource ds;
-    String url = "jdbc:mysql://localhost:3306/sample_schema";
     String dbName = "sample_schema";
     String user = "ivaneh";
     String password = "password";

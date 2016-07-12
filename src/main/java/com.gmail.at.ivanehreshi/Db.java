@@ -14,7 +14,7 @@ public class Db {
     String user = "ivaneh";
     String password = "password";
     Connection connection = null;
-    final String SQL_DOMAIN = "SELECT magic_column FROM sample_table";
+    final String SQL_DOMAIN = "SELECT magic_column FROM sample_table__";
 
     public Db() {
         this.ds = new MysqlDataSource();
@@ -33,7 +33,7 @@ public class Db {
         try {
             connection = ds.getConnection();
         } catch (SQLException e){
-            e.printStackTrace();
+            printException(e);
             connection = null;
         }
     }
@@ -49,8 +49,8 @@ public class Db {
     public void close() {
         getConnection().ifPresent(conn -> {
             try { conn.close(); }
-            catch (Exception e) {
-                e.printStackTrace();
+            catch (SQLException e) {
+                printException(e);
             }
         });
         setConnection(null);
@@ -70,7 +70,21 @@ public class Db {
                 System.out.println(rs.getString("magic_column"));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            printException(e);
+        }
+    }
+
+    public static void printException(SQLException e) {
+        if(e == null)
+            return;
+
+        System.out.println("SQL state(5 alphanums): " + e.getSQLState());
+        System.out.println("Error code(vendor specific exception code): " + e.getErrorCode());
+
+        SQLException nextException = e.getNextException();
+        if(nextException != null) {
+            System.out.println("|--->");
+            printException(nextException);
         }
     }
 

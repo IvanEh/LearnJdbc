@@ -2,10 +2,7 @@ package com.gmail.at.ivanehreshi;
 
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.Optional;
 
 public class Db {
@@ -69,9 +66,13 @@ public class Db {
             while (rs.next()) {
                 System.out.println(rs.getString("magic_column"));
             }
+            printWarnings(statement.getWarnings());
+            printWarnings(rs.getWarnings());
         } catch (SQLException e) {
             printException(e);
         }
+
+
     }
 
     public static void printException(SQLException e) {
@@ -80,11 +81,27 @@ public class Db {
 
         System.out.println("SQL state(5 alphanums): " + e.getSQLState());
         System.out.println("Error code(vendor specific exception code): " + e.getErrorCode());
+        System.out.println("Description: " + e.getMessage());
 
         SQLException nextException = e.getNextException();
         if(nextException != null) {
             System.out.println("|--->");
             printException(nextException);
+        }
+    }
+
+    public static void printWarnings(SQLWarning warning) {
+        if(warning == null) {
+            System.out.println("No warnings");
+            return;
+        }
+
+        System.out.println("Warnings: ");
+        printException(warning);
+        SQLWarning nextWarning = warning.getNextWarning();
+        if(nextWarning != null) {
+            System.out.println("|--->");
+            printWarnings(nextWarning);
         }
     }
 

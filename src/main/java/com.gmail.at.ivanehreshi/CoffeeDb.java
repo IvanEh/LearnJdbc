@@ -12,7 +12,8 @@ public class CoffeeDb {
     String password = "password";
     Connection connection = null;
     static final String SQL_GET_ALL_COFFEE_ALPHA_ORD = "SELECT name FROM coffee ORDER BY name ASC";
-    private static final String SQL_GET_ALL_COFFEE = "SELECT name, price, id_coffee FROM coffee";
+    // Without '' around %s doesn't work
+    static final String SQL_INSERT_COFFEE = "INSERT INTO coffee(name) VALUES ( '%s' )";
 
     public CoffeeDb() {
         this.ds = new MysqlDataSource();
@@ -75,7 +76,7 @@ public class CoffeeDb {
 
     }
 
-    public void printAllCoffeeAndInsert(String coffee) {
+    public void batchInsertThreeTopCoffees(String top1, String top2, String top3) {
         Optional<Connection> maybeConn = getConnection();
         Connection connection;
         if(maybeConn.isPresent())
@@ -83,39 +84,20 @@ public class CoffeeDb {
         else
             return ;
 
-        // need to set concurrency type updatable
-        try(Statement statement = connection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
-            ResultSet rs = statement.executeQuery(SQL_GET_ALL_COFFEE);
-
-            while (rs.next()) {
-                System.out.println(rs.getString(1));
-            }
-
-            rs.moveToInsertRow();
-            rs.updateString(1, coffee);
-            rs.insertRow();
+        // To fully utilize batch updates auto commit should be false
+        try {
+            connection.setAutoCommit(false);
         } catch (SQLException e) {
             printException(e);
         }
-    }
 
-    public void printAllCoffeeAndUpdatePrice(double factor) {
-        Optional<Connection> maybeConn = getConnection();
-        Connection connection;
-        if(maybeConn.isPresent())
-            connection = maybeConn.get();
-        else
-            return ;
-
-        // need to set concurrency type updatable
-        try(Statement statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE)) {
-            ResultSet rs = statement.executeQuery(SQL_GET_ALL_COFFEE);
-
-            while (rs.next()) {
-                System.out.println(rs.getString(1) + "(" + rs.getString(2) + ")");
-                rs.updateDouble(2, rs.getDouble(2) * factor);
-                rs.updateRow();
-            }
+        try(Statement statement = connection.createStatement()) {
+            statement.addBatch(String.format(SQL_INSERT_COFFEE, top1));
+            statement.addBatch(String.format(SQL_INSERT_COFFEE, top2));
+            statement.addBatch(String.format(SQL_INSERT_COFFEE, top3));
+            int[] updateCount = statement.executeBatch();
+            connection.commit();
+            connection.setAutoCommit(true);
         } catch (SQLException e) {
             printException(e);
         }
@@ -189,8 +171,8 @@ public class CoffeeDb {
         CoffeeDb db = new CoffeeDb();
         db.connect();
         db.dbInfo();
+        db.batchInsertThreeTopCoffees("Tropicana", "Mogi", "Cheb");
         db.printAllCoffeeFromLast();
-        db.printAllCoffeeAndUpdatePrice(1);
         db.close();
     }
 }

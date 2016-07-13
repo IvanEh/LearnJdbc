@@ -12,6 +12,7 @@ public class CoffeeDb {
     String password = "password";
     Connection connection = null;
     static final String SQL_GET_ALL_COFFEE_ALPHA_ORD = "SELECT name FROM coffee ORDER BY name ASC";
+    private static final String SQL_GET_ALL_COFFEE = "SELECT name, price, id_coffee FROM coffee";
 
     public CoffeeDb() {
         this.ds = new MysqlDataSource();
@@ -63,7 +64,9 @@ public class CoffeeDb {
 
         try(Statement statement = connection.createStatement()) {
             ResultSet rs = statement.executeQuery(SQL_GET_ALL_COFFEE_ALPHA_ORD);
-            while (rs.next()) {
+            rs.afterLast();
+
+            while (rs.previous()) {
                 System.out.println(rs.getString(1));
             }
         } catch (SQLException e) {
@@ -71,6 +74,53 @@ public class CoffeeDb {
         }
 
     }
+
+    public void printAllCoffeeAndInsert(String coffee) {
+        Optional<Connection> maybeConn = getConnection();
+        Connection connection;
+        if(maybeConn.isPresent())
+            connection = maybeConn.get();
+        else
+            return ;
+
+        // need to set concurrency type updatable
+        try(Statement statement = connection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
+            ResultSet rs = statement.executeQuery(SQL_GET_ALL_COFFEE);
+
+            while (rs.next()) {
+                System.out.println(rs.getString(1));
+            }
+
+            rs.moveToInsertRow();
+            rs.updateString(1, coffee);
+            rs.insertRow();
+        } catch (SQLException e) {
+            printException(e);
+        }
+    }
+
+    public void printAllCoffeeAndUpdatePrice(double factor) {
+        Optional<Connection> maybeConn = getConnection();
+        Connection connection;
+        if(maybeConn.isPresent())
+            connection = maybeConn.get();
+        else
+            return ;
+
+        // need to set concurrency type updatable
+        try(Statement statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE)) {
+            ResultSet rs = statement.executeQuery(SQL_GET_ALL_COFFEE);
+
+            while (rs.next()) {
+                System.out.println(rs.getString(1) + "(" + rs.getString(2) + ")");
+                rs.updateDouble(2, rs.getDouble(2) * factor);
+                rs.updateRow();
+            }
+        } catch (SQLException e) {
+            printException(e);
+        }
+    }
+
     public void dbInfo() {
         Optional<Connection> maybeConnection = getConnection();
         Connection connection;
@@ -140,6 +190,7 @@ public class CoffeeDb {
         db.connect();
         db.dbInfo();
         db.printAllCoffeeFromLast();
+        db.printAllCoffeeAndUpdatePrice(1);
         db.close();
     }
 }

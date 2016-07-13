@@ -11,7 +11,7 @@ public class CoffeeDb {
     String user = "ivaneh";
     String password = "password";
     Connection connection = null;
-    static final String SQL_DOMAIN = "SELECT magic_column FROM coffee";
+    static final String SQL_GET_ALL_COFFEE_ALPHA_ORD = "SELECT name FROM coffee ORDER BY name ASC";
 
     public CoffeeDb() {
         this.ds = new MysqlDataSource();
@@ -53,28 +53,55 @@ public class CoffeeDb {
         setConnection(null);
     }
 
-    public void domainMethod() {
+    public void printAllCoffeeFromLast() {
         Optional<Connection> maybeConn = getConnection();
         Connection connection;
         if(maybeConn.isPresent())
             connection = maybeConn.get();
         else
-            return;
-
+            return ;
 
         try(Statement statement = connection.createStatement()) {
-            DatabaseMetaData metaData = connection.getMetaData();
-
-            ResultSet rs = statement.executeQuery(SQL_DOMAIN);
+            ResultSet rs = statement.executeQuery(SQL_GET_ALL_COFFEE_ALPHA_ORD);
             while (rs.next()) {
-                System.out.println(rs.getString("magic_column"));
+                System.out.println(rs.getString(1));
             }
-            printWarnings(statement.getWarnings());
-            printWarnings(rs.getWarnings());
         } catch (SQLException e) {
             printException(e);
         }
 
+    }
+    public void dbInfo() {
+        Optional<Connection> maybeConnection = getConnection();
+        Connection connection;
+        if(maybeConnection.isPresent()) {
+            connection = maybeConnection.get();
+        } else {
+            return;
+        }
+        try {
+            DatabaseMetaData metaData = connection.getMetaData();
+
+            System.out.printf("Support type TYPE_FORWARD_ONLY: %s \n", metaData.supportsResultSetType(ResultSet.TYPE_FORWARD_ONLY));
+            System.out.printf("Support type TYPE_SCROLL_INSENSITIVE:  %s\n", metaData.supportsResultSetType(ResultSet.TYPE_SCROLL_INSENSITIVE));
+            System.out.printf("Support type TYPE_SCROLL_SENSITIVE: %s \n", metaData.supportsResultSetType(ResultSet.TYPE_SCROLL_SENSITIVE));
+
+
+            System.out.printf("Holdability - hold: %s\n", metaData.supportsResultSetHoldability(ResultSet.HOLD_CURSORS_OVER_COMMIT));
+            System.out.printf("Holdability - close: %s\n", metaData.supportsResultSetHoldability(ResultSet.CLOSE_CURSORS_AT_COMMIT));
+
+            System.out.printf("Concurrency - forward only - read only:  %s\n",
+                    metaData.supportsResultSetConcurrency(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY));
+            System.out.printf("Concurrency - forward only - updatable:  %s\n",
+                    metaData.supportsResultSetConcurrency(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE));
+            System.out.printf("Concurrency - scroll insensitive - updatable:  %s\n",
+                    metaData.supportsResultSetConcurrency(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE));
+            System.out.printf("Concurrency - scroll sensitive - updatable:  %s\n",
+                    metaData.supportsResultSetConcurrency(ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE));
+
+        } catch (SQLException e) {
+            printException(e);
+        }
 
     }
 
@@ -111,7 +138,8 @@ public class CoffeeDb {
     public static void main(String[] args) {
         CoffeeDb db = new CoffeeDb();
         db.connect();
-        db.domainMethod();
+        db.dbInfo();
+        db.printAllCoffeeFromLast();
         db.close();
     }
 }

@@ -13,7 +13,7 @@ public class CoffeeDb {
     Connection connection = null;
     static final String SQL_GET_ALL_COFFEE_ALPHA_ORD = "SELECT name FROM coffee ORDER BY name ASC";
     // Without '' around %s doesn't work
-    static final String SQL_INSERT_COFFEE = "INSERT INTO coffee(name) VALUES ( '%s' )";
+    static final String SQL_INSERT_COFFEE = "INSERT INTO coffee(name, price) VALUES (?, ?)";
 
     public CoffeeDb() {
         this.ds = new MysqlDataSource();
@@ -32,7 +32,7 @@ public class CoffeeDb {
         try {
             connection = ds.getConnection();
         } catch (SQLException e){
-            printException(e);
+            e.printStackTrace();
             connection = null;
         }
     }
@@ -49,7 +49,7 @@ public class CoffeeDb {
         getConnection().ifPresent(conn -> {
             try { conn.close(); }
             catch (SQLException e) {
-                printException(e);
+                e.printStackTrace();
             }
         });
         setConnection(null);
@@ -71,35 +71,39 @@ public class CoffeeDb {
                 System.out.println(rs.getString(1));
             }
         } catch (SQLException e) {
-            printException(e);
+            e.printStackTrace();
         }
-
     }
 
-    public void batchInsertThreeTopCoffees(String top1, String top2, String top3) {
+    public void insertCoffeeWithPrice(double price, String... coffees) {
         Optional<Connection> maybeConn = getConnection();
         Connection connection;
-        if(maybeConn.isPresent())
+        if (maybeConn.isPresent())
             connection = maybeConn.get();
         else
-            return ;
+            return;
 
-        // To fully utilize batch updates auto commit should be false
+        PreparedStatement stmt = null;
         try {
             connection.setAutoCommit(false);
-        } catch (SQLException e) {
-            printException(e);
-        }
-
-        try(Statement statement = connection.createStatement()) {
-            statement.addBatch(String.format(SQL_INSERT_COFFEE, top1));
-            statement.addBatch(String.format(SQL_INSERT_COFFEE, top2));
-            statement.addBatch(String.format(SQL_INSERT_COFFEE, top3));
-            int[] updateCount = statement.executeBatch();
+            stmt = connection.prepareStatement(SQL_INSERT_COFFEE);
+            stmt.setDouble(2, price);
+            for(String coffee: coffees) {
+                stmt.setString(1, coffee);
+                stmt.executeUpdate();
+            }
             connection.commit();
-            connection.setAutoCommit(true);
-        } catch (SQLException e) {
-            printException(e);
+
+        }catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (stmt != null) {
+                    stmt.close();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -132,46 +136,18 @@ public class CoffeeDb {
                     metaData.supportsResultSetConcurrency(ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE));
 
         } catch (SQLException e) {
-            printException(e);
+            e.printStackTrace();
         }
 
     }
 
-    public static void printException(SQLException e) {
-        if(e == null)
-            return;
-
-        System.out.println("SQL state(5 alphanums): " + e.getSQLState());
-        System.out.println("Error code(vendor specific exception code): " + e.getErrorCode());
-        System.out.println("Description: " + e.getMessage());
-
-        SQLException nextException = e.getNextException();
-        if(nextException != null) {
-            System.out.println("|--->");
-            printException(nextException);
-        }
-    }
-
-    public static void printWarnings(SQLWarning warning) {
-        if(warning == null) {
-            System.out.println("No warnings");
-            return;
-        }
-
-        System.out.println("Warnings: ");
-        printException(warning);
-        SQLWarning nextWarning = warning.getNextWarning();
-        if(nextWarning != null) {
-            System.out.println("|--->");
-            printWarnings(nextWarning);
-        }
-    }
 
     public static void main(String[] args) {
         CoffeeDb db = new CoffeeDb();
         db.connect();
         db.dbInfo();
-        db.batchInsertThreeTopCoffees("Tropicana", "Mogi", "Cheb");
+        db.insertCoffeeWithPrice(10, "Banana", "Latte");
+        db.printAllCoffeeFromLast();
         db.printAllCoffeeFromLast();
         db.close();
     }

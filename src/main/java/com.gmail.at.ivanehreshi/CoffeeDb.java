@@ -12,7 +12,6 @@ public class CoffeeDb {
     String password = "password";
     Connection connection = null;
     static final String SQL_GET_ALL_COFFEE_ALPHA_ORD = "SELECT name FROM coffee ORDER BY name ASC";
-    // Without '' around %s doesn't work
     static final String SQL_INSERT_COFFEE = "INSERT INTO coffee(name, price) VALUES (?, ?)";
 
     public CoffeeDb() {

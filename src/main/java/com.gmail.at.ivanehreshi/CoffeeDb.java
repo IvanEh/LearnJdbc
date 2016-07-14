@@ -74,38 +74,6 @@ public class CoffeeDb {
         }
     }
 
-    public void insertCoffeeWithPrice(double price, String... coffees) {
-        Optional<Connection> maybeConn = getConnection();
-        Connection connection;
-        if (maybeConn.isPresent())
-            connection = maybeConn.get();
-        else
-            return;
-
-        PreparedStatement stmt = null;
-        try {
-            connection.setAutoCommit(false);
-            stmt = connection.prepareStatement(SQL_INSERT_COFFEE);
-            stmt.setDouble(2, price);
-            for(String coffee: coffees) {
-                stmt.setString(1, coffee);
-                stmt.executeUpdate();
-            }
-            connection.commit();
-
-        }catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (stmt != null) {
-                    stmt.close();
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
     public void dbInfo() {
         Optional<Connection> maybeConnection = getConnection();
         Connection connection;
@@ -145,8 +113,6 @@ public class CoffeeDb {
         CoffeeDb db = new CoffeeDb();
         db.connect();
         db.dbInfo();
-        db.insertCoffeeWithPrice(10, "Banana", "Latte");
-        db.printAllCoffeeFromLast();
         db.printAllCoffeeFromLast();
         db.close();
     }

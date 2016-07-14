@@ -89,10 +89,11 @@ public class CoffeeDb {
             System.out.printf("Support type TYPE_SCROLL_INSENSITIVE:  %s\n", metaData.supportsResultSetType(ResultSet.TYPE_SCROLL_INSENSITIVE));
             System.out.printf("Support type TYPE_SCROLL_SENSITIVE: %s \n", metaData.supportsResultSetType(ResultSet.TYPE_SCROLL_SENSITIVE));
 
-
+            System.out.println();
             System.out.printf("Holdability - hold: %s\n", metaData.supportsResultSetHoldability(ResultSet.HOLD_CURSORS_OVER_COMMIT));
             System.out.printf("Holdability - close: %s\n", metaData.supportsResultSetHoldability(ResultSet.CLOSE_CURSORS_AT_COMMIT));
 
+            System.out.println();
             System.out.printf("Concurrency - forward only - read only:  %s\n",
                     metaData.supportsResultSetConcurrency(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY));
             System.out.printf("Concurrency - forward only - updatable:  %s\n",
@@ -102,6 +103,15 @@ public class CoffeeDb {
             System.out.printf("Concurrency - scroll sensitive - updatable:  %s\n",
                     metaData.supportsResultSetConcurrency(ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE));
 
+            System.out.println();
+            System.out.printf("Transaction isolation level - read committed: %s\n",
+                    metaData.supportsTransactionIsolationLevel(Connection.TRANSACTION_READ_COMMITTED));
+            System.out.printf("Transaction isolation level - read uncommitted: %s\n",
+                    metaData.supportsTransactionIsolationLevel(Connection.TRANSACTION_READ_UNCOMMITTED));
+            System.out.printf("Transaction isolation level - repeatable read: %s\n",
+                    metaData.supportsTransactionIsolationLevel(Connection.TRANSACTION_REPEATABLE_READ));
+            System.out.printf("Transaction isolation level - serializable read: %s\n",
+                    metaData.supportsTransactionIsolationLevel(Connection.TRANSACTION_SERIALIZABLE));
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -113,7 +123,6 @@ public class CoffeeDb {
         CoffeeDb db = new CoffeeDb();
         db.connect();
         db.dbInfo();
-        db.printAllCoffeeFromLast();
         db.close();
     }
 }

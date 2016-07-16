@@ -16,6 +16,12 @@ import java.sql.*;
 import java.util.Optional;
 import java.util.Random;
 
+    // I'd suggest to use normal insert and update statements unless you really have to do something else.
+    // I have yet to find a good use case for row sets myself, and I'd stay away unless you find a correct
+    // implementation. Something which com.sun.rowset.CachedRowSetImpl really isn't; I have run into too
+    // many different problems ranging from not following the JDBC standard with regard to the difference
+    // between columnName and columnLabel, problems with using it in auto commit (or not auto commit;
+    // the details are a bit fuzzy), to things like that difference between setString and updateString)
 public class CoffeeDb {
     MysqlDataSource ds;
     String dbName = "coffee_shop";
@@ -77,6 +83,7 @@ public class CoffeeDb {
         }
         catch (SQLException e) {
             e.printStackTrace();
+            System.out.println(e.getMessage());
         }
         finally {
             try {
@@ -91,9 +98,20 @@ public class CoffeeDb {
         while (rowSet.next()) {
             System.out.print(rowSet.getString("name"));
             System.out.println(" " + rowSet.getDouble("price"));
-            rowSet.updateDouble("price", rowSet.getDouble("price") * 0.8);
+
+            if(new Random().nextBoolean())
+                continue;
+
+            rowSet.updateDouble("price", rowSet.getDouble("price") * 2);
             rowSet.updateRow();
         }
+//  insertion doesn't works
+
+//        rowSet.moveToInsertRow();
+//        rowSet.updateString("name", "NotFiltered");
+//        rowSet.updateDouble("price", 15);
+//        rowSet.updateNull("id_coffee");
+//        rowSet.insertRow();
     }
 
 

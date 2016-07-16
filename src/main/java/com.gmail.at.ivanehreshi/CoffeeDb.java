@@ -1,11 +1,17 @@
 package com.gmail.at.ivanehreshi;
 
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
+import com.sun.rowset.CachedRowSetImpl;
 import com.sun.rowset.JdbcRowSetImpl;
 import com.sun.rowset.RowSetFactoryImpl;
 
 import javax.sql.RowSet;
+import javax.sql.RowSetEvent;
+import javax.sql.RowSetListener;
+import javax.sql.rowset.CachedRowSet;
 import javax.sql.rowset.RowSetProvider;
+import javax.sql.rowset.spi.SyncProviderException;
+import javax.sql.rowset.spi.SyncResolver;
 import java.sql.*;
 import java.util.Optional;
 import java.util.Random;
@@ -27,60 +33,52 @@ public class CoffeeDb {
         ds.setPort(3306);
     }
 
-    public void rowsetFromConnection() {
-        RowSet rowSet = null;
+    public void createRowsetAndDoStuff() {
+        CachedRowSet rowSet = null;
         try {
-            rowSet = new JdbcRowSetImpl(ds.getConnection());
-            rowSet.setCommand(SQL_GET_ALL_COFFEE);
-            rowSet.execute();
-            doStuff(rowSet);
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                rowSet.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    public void rowsetFromRs() {
-        RowSet rowSet = null;
-        try {
-            // resultset should be updatable and scrollable in order to use rowset
-            Statement stmt = ds.getConnection().createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE,
-                                                                ResultSet.CONCUR_UPDATABLE);
-            ResultSet rs = stmt.executeQuery(SQL_GET_ALL_COFFEE);
-            rowSet = new JdbcRowSetImpl(rs);
-            doStuff(rowSet);
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                rowSet.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    public void rowsetFromDefaultCtor() {
-        RowSet rowSet = null;
-        try {
-            // resultset should be updatable and scrollable in order to use rowset
-            rowSet = new JdbcRowSetImpl();
-            rowSet.setUrl("jdbc:mysql://" + "localhost:3306/" + dbName);
+            rowSet = new CachedRowSetImpl();
+            // Note that relaxAutoCommit variable need to be set
+            rowSet.setUrl("jdbc:mysql://" + "localhost:3306/" + dbName + "?relaxAutoCommit=true");
             rowSet.setUsername(user);
             rowSet.setPassword(password);
             rowSet.setCommand(SQL_GET_ALL_COFFEE);
             rowSet.execute();
+
+            // cached rowset can be paged. See documentation
+            System.out.println("Page size: " + rowSet.getPageSize());
+
+            rowSet.addRowSetListener(new RowSetListener() {
+                @Override
+                public void rowSetChanged(RowSetEvent event) {
+                    System.out.println("RowSetEvent");
+                }
+
+                @Override
+                public void rowChanged(RowSetEvent event) {
+
+                }
+
+                @Override
+                public void cursorMoved(RowSetEvent event) {
+
+                }
+            });
+
             doStuff(rowSet);
-        } catch (SQLException e) {
+
+            // update database
+            rowSet.acceptChanges();
+
+        } catch (SyncProviderException e) {
+            SyncResolver resolver = e.getSyncResolver();
+//            resolver.nextConflict();
+//            resolver.getConflictValue(index | column)
+
+        }
+        catch (SQLException e) {
             e.printStackTrace();
-        } finally {
+        }
+        finally {
             try {
                 rowSet.close();
             } catch (SQLException e) {
@@ -89,66 +87,18 @@ public class CoffeeDb {
         }
     }
 
-    public void rowsetFromFactory() {
-        RowSet rowSet = null;
-        try {
-            // Works
-            //rowSet = new RowSetFactoryImpl().createJdbcRowSet();
-            // but preferred
-            rowSet = RowSetProvider.newFactory().createJdbcRowSet();
-            rowSet.setUrl("jdbc:mysql://" + "localhost:3306/" + dbName);
-            rowSet.setUsername(user);
-            rowSet.setPassword(password);
-            rowSet.setCommand(SQL_GET_ALL_COFFEE);
-            rowSet.execute();
-            doStuff(rowSet);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                rowSet.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    private void doStuff(RowSet rowSet) throws SQLException {
-        System.out.println("------------");
-        System.out.println("query");
+    private void doStuff(CachedRowSet rowSet) throws SQLException {
         while (rowSet.next()) {
-            System.out.printf("%s(%s)\n", rowSet.getString("name"),
-                                        rowSet.getString("price"));
+            System.out.print(rowSet.getString("name"));
+            System.out.println(" " + rowSet.getDouble("price"));
+            rowSet.updateDouble("price", rowSet.getDouble("price") * 0.8);
+            rowSet.updateRow();
         }
-        rowSet.beforeFirst();
-        if(rowSet.next()) {
-            System.out.printf("%s(%s)\n", rowSet.getString("name"),
-                    rowSet.getString("price"));
-        }
-
-        System.out.println("update");
-        rowSet.afterLast();
-        if(rowSet.previous()) {
-            rowSet.updateDouble("price", new Random().nextDouble() * 20);
-        }
-        rowSet.updateRow();
-
-        System.out.println("insert");
-        rowSet.moveToInsertRow();
-        rowSet.updateString("name", "Random" + new Random().nextInt(7));
-        rowSet.insertRow();
-        System.out.println("------------");
     }
 
 
     public static void main(String[] args) {
         CoffeeDb db = new CoffeeDb();
-        db.rowsetFromConnection();
-        System.out.println();
-        db.rowsetFromRs();
-        System.out.println();
-        db.rowsetFromDefaultCtor();
-        System.out.println();
-        db.rowsetFromFactory();
+        db.createRowsetAndDoStuff();
     }
 }

@@ -1,5 +1,6 @@
 package com.gmail.at.ivanehreshi;
 
+import com.mysql.jdbc.*;
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import com.sun.rowset.CachedRowSetImpl;
 import com.sun.rowset.JdbcRowSetImpl;
@@ -12,7 +13,11 @@ import javax.sql.rowset.CachedRowSet;
 import javax.sql.rowset.RowSetProvider;
 import javax.sql.rowset.spi.SyncProviderException;
 import javax.sql.rowset.spi.SyncResolver;
+import java.io.IOException;
 import java.sql.*;
+import java.sql.Blob;
+import java.sql.Connection;
+import java.sql.Statement;
 import java.util.Optional;
 import java.util.Random;
 
@@ -28,7 +33,7 @@ public class CoffeeDb {
     String user = "ivaneh";
     String password = "password";
     Connection connection = null;
-    static final String SQL_GET_ALL_COFFEE = "SELECT id_coffee, name, price FROM coffee";
+    static final String SQL_GET_ALL_COFFEE = "SELECT id_coffee, name, price, image FROM coffee";
 
     public CoffeeDb() {
         this.ds = new MysqlDataSource();
@@ -37,86 +42,64 @@ public class CoffeeDb {
         ds.setPassword(password);
         ds.setServerName("localhost");
         ds.setPort(3306);
+        try {
+            connection = ds.getConnection();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public void createRowsetAndDoStuff() {
-        CachedRowSet rowSet = null;
-        try {
-            rowSet = new CachedRowSetImpl();
-            // Note that relaxAutoCommit variable need to be set
-            rowSet.setUrl("jdbc:mysql://" + "localhost:3306/" + dbName + "?relaxAutoCommit=true");
-            rowSet.setUsername(user);
-            rowSet.setPassword(password);
-            rowSet.setCommand(SQL_GET_ALL_COFFEE);
-            rowSet.execute();
+        try(Statement stmt = this.connection.createStatement(
+                ResultSet.TYPE_SCROLL_SENSITIVE,
+                ResultSet.CONCUR_UPDATABLE)) {
+            ResultSet rs = stmt.executeQuery(SQL_GET_ALL_COFFEE);
 
-            // cached rowset can be paged. See documentation
-            System.out.println("Page size: " + rowSet.getPageSize());
+            doStuff(rs);
 
-            rowSet.addRowSetListener(new RowSetListener() {
-                @Override
-                public void rowSetChanged(RowSetEvent event) {
-                    System.out.println("RowSetEvent");
-                }
-
-                @Override
-                public void rowChanged(RowSetEvent event) {
-
-                }
-
-                @Override
-                public void cursorMoved(RowSetEvent event) {
-
-                }
-            });
-
-            doStuff(rowSet);
-
-            // update database
-            rowSet.acceptChanges();
-
-        } catch (SyncProviderException e) {
-            SyncResolver resolver = e.getSyncResolver();
-//            resolver.nextConflict();
-//            resolver.getConflictValue(index | column)
-
-        }
-        catch (SQLException e) {
+            rs.close();
+        } catch (SQLException e) {
             e.printStackTrace();
             System.out.println(e.getMessage());
         }
-        finally {
-            try {
-                rowSet.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
     }
 
-    private void doStuff(CachedRowSet rowSet) throws SQLException {
-        while (rowSet.next()) {
-            System.out.print(rowSet.getString("name"));
-            System.out.println(" " + rowSet.getDouble("price"));
+    private void doStuff(ResultSet rs) throws SQLException {
+        while (rs.next()) {
+            System.out.print(rs.getString("name"));
+            System.out.println(" " + rs.getDouble("price"));
 
-            if(new Random().nextBoolean())
-                continue;
+            Blob blob = this.connection.createBlob();
+            try {
+//                for some reasons this doesn't works with mysql connector
+//                blob.setBinaryStream(1).write(new byte[]{1, 1, 0, 1});
+                blob.setBytes(1, new byte[]{1, 1, 0, 1});
+                System.out.println(blob.length());
+                rs.updateBlob("image", blob);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            rs.updateRow();
 
-            rowSet.updateDouble("price", rowSet.getDouble("price") * 2);
-            rowSet.updateRow();
+            Blob inputBlob = rs.getBlob("image");
+            System.out.println(inputBlob.getBytes(1, 4)[1]);
+            inputBlob.free();
         }
-//  insertion doesn't works
-
-//        rowSet.moveToInsertRow();
-//        rowSet.updateString("name", "NotFiltered");
-//        rowSet.updateDouble("price", 15);
-//        rowSet.updateNull("id_coffee");
-//        rowSet.insertRow();
     }
 
 
     public static void main(String[] args) {
         CoffeeDb db = new CoffeeDb();
         db.createRowsetAndDoStuff();
+        db.close();
+    }
+
+    private void close() {
+        if(this.connection != null)
+            try {
+                this.connection.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
     }
 }
